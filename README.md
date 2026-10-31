@@ -39,7 +39,8 @@ You pick a folder of your vault, such as `Life/Habits/`. Each habit is one JSON 
 
 [`habits.js`](habits.js) holds the numbers, with no page code, so `tests/habits.test.js` tests them in Node.
 
-- **Covered days.** A day is covered when it lies in a window of `days` days with `times` checks at least.
+- **Covered days.** A day is covered when the `days` days that end on it hold `times` checks at least. For "3 times a week", each day is covered while the last seven days hold three checks.
+- A check dated after today counts for nothing yet.
 - **A streak** is a run of covered days. The current streak ends today or yesterday, because today is not over yet.
 - **The strength** goes from 0% to 100%. Each day moves it a step toward the part of the target that the habit reached in its window. A run of checks or misses moves it half of the way in two weeks.
 

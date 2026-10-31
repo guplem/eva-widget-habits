@@ -84,82 +84,73 @@ export function checkOn(habit, date) {
 }
 
 /**
- * Each day that the frequency covers, up to `today`. A day is covered when it lies in a window of
- * `days` days with `times` done days at least. So for "3 times a week", a week with three checks
- * covers all of its days, and the days between two checks do not break a streak.
+ * Every number of a habit on `today`, computed in one pass over its days. A check dated after
+ * today counts for nothing yet.
+ *
+ * - `done`: the value of each done day, as `doneDays` gives it.
+ * - `covered`: each day that meets the frequency. A day is covered when the window of `days` days
+ *   that ends on it holds `times` done days at least. So "3 times a week" covers each day while the
+ *   last seven days hold three checks, and a day with no check between them keeps the streak.
+ * - `streaks`: each run of covered days, as `{ start, end, length }` in day numbers, oldest first.
+ * - `strength`: from 0 to 1. It starts at 0 on the first check. Each day moves it a step toward the
+ *   part of the target that its window reached. Today counts only once it is covered, because the
+ *   day is not over yet.
+ * - `total`: the done days, and for a number habit the sum of their values.
  */
-export function coveredDays(habit, today) {
+export function habitFacts(habit, today) {
   const done = doneDays(habit);
+  for (const day of done.keys()) if (day > today) done.delete(day);
   const { times, days } = frequencyOf(habit);
   const covered = new Set();
-  if (done.size === 0) return covered;
-  const first = Math.min(...done.keys());
-  for (let start = first - days + 1; start <= today; start += 1) {
-    let count = 0;
-    for (let day = start; day < start + days; day += 1) if (done.has(day)) count += 1;
-    if (count < times) continue;
-    for (let day = Math.max(start, first); day < start + days && day <= today; day += 1) covered.add(day);
-  }
-  return covered;
-}
-
-/** Each streak: a run of covered days, as `{ start, end, length }` in day numbers, oldest first. */
-export function streaks(habit, today) {
-  const days = [...coveredDays(habit, today)].sort((a, b) => a - b);
   const runs = [];
-  for (const day of days) {
-    const last = runs.at(-1);
-    if (last !== undefined && day === last.end + 1) {
-      last.end = day;
-      last.length += 1;
-    } else {
-      runs.push({ start: day, end: day, length: 1 });
+  let score = 0;
+  let sum = 0;
+  for (const value of done.values()) sum += value;
+  if (done.size > 0) {
+    let inWindow = 0;
+    for (let day = Math.min(...done.keys()); day <= today; day += 1) {
+      if (done.has(day)) inWindow += 1;
+      if (done.has(day - days)) inWindow -= 1;
+      const isCovered = inWindow >= times;
+      if (isCovered) {
+        covered.add(day);
+        const last = runs.at(-1);
+        if (last !== undefined && last.end === day - 1) {
+          last.end = day;
+          last.length += 1;
+        } else {
+          runs.push({ start: day, end: day, length: 1 });
+        }
+      }
+      if (day === today && !isCovered) break;
+      score += (Math.min(1, inWindow / times) - score) * strengthStep;
     }
   }
-  return runs;
+  return { done, covered, streaks: runs, strength: score, total: { days: done.size, sum } };
+}
+
+export function coveredDays(habit, today) {
+  return habitFacts(habit, today).covered;
+}
+
+export function strength(habit, today) {
+  return habitFacts(habit, today).strength;
+}
+
+export function totals(habit, today) {
+  return habitFacts(habit, today).total;
 }
 
 /**
  * The streak that is still running: it ends today, or yesterday, because the day is not over
  * yet. Its length is 0 when no streak runs.
  */
-export function currentStreak(habit, today) {
-  const last = streaks(habit, today).at(-1);
+export function currentStreak(facts, today) {
+  const last = facts.streaks.at(-1);
   return last !== undefined && last.end >= today - 1 ? last.length : 0;
 }
 
 /** The longest streaks, longest first, and the newest first among equal ones. */
-export function bestStreaks(habit, today, count = 5) {
-  return streaks(habit, today)
-    .sort((a, b) => b.length - a.length || b.end - a.end)
-    .slice(0, count);
-}
-
-/**
- * The strength of the habit on `today`, from 0 to 1. It starts at 0 on the first check. Each day
- * moves it a step toward the part of the target that the habit reached in the window that ends
- * on that day. Today counts only when it is done, because the day is not over yet.
- */
-export function strength(habit, today) {
-  const done = doneDays(habit);
-  if (done.size === 0) return 0;
-  const { times, days } = frequencyOf(habit);
-  const first = Math.min(...done.keys());
-  let score = 0;
-  let inWindow = 0;
-  for (let day = first; day <= today; day += 1) {
-    if (done.has(day)) inWindow += 1;
-    if (done.has(day - days)) inWindow -= 1;
-    if (day === today && !done.has(day)) break;
-    score += (Math.min(1, inWindow / times) - score) * strengthStep;
-  }
-  return score;
-}
-
-/** The total of the done days, and for a number habit the sum of the values. */
-export function totals(habit) {
-  const done = doneDays(habit);
-  let sum = 0;
-  for (const value of done.values()) sum += value;
-  return { days: done.size, sum };
+export function bestStreaks(facts, count = 5) {
+  return [...facts.streaks].sort((a, b) => b.length - a.length || b.end - a.end).slice(0, count);
 }

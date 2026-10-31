@@ -169,6 +169,75 @@ test("when Eva refuses a write, the widget says so and shows the file as it is",
   await expect(page.getByRole("button", { name: "Walk, today" })).toHaveAttribute("aria-pressed", "false");
 });
 
+test("when the write does not reach Eva, the widget says so", async ({ page }) => {
+  await open(page, "medium");
+  await page.route("**/data/habits/walk.json", (route) =>
+    route.request().method() === "PUT" ? route.abort() : route.fallback(),
+  );
+  await page.getByRole("button", { name: "Walk, today" }).click();
+  await expect(page.locator('[data-role="note"]')).toHaveText("Eva could not save this change. Try again.");
+});
+
+test("a check keeps a check that Eva wrote after the widget read the folder", async ({ page }) => {
+  const habits = testHabits();
+  const writes = await fakeWrites(page);
+  await open(page, "medium", habits);
+  // An agent of Eva writes yesterday's check while the page stays visible.
+  habits["walk.json"].checks.push({ date: "2026-03-09" });
+  await page.getByRole("button", { name: "Walk, today" }).click();
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0].body.checks).toEqual([{ date: "2026-03-04" }, { date: "2026-03-09" }, { date: today }]);
+});
+
+test("the folder is read again after a write that was on its way", async ({ page }) => {
+  const habits = testHabits();
+  let release = () => {};
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  await open(page, "medium", habits);
+  await page.route("**/data/habits/walk.json", async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    await held;
+    return route.fulfill({ status: 204 });
+  });
+  await page.getByRole("button", { name: "Walk, today" }).click();
+  habits["read.json"].checks.push({ date: today });
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  release();
+  await expect(page.getByRole("button", { name: "Read, today" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the value of a number habit is the sum of today's checks, and a save keeps one check", async ({ page }) => {
+  const habits = testHabits();
+  habits["meditate.json"].checks.push({ date: today, value: 10, note: "Morning" }, { date: today, value: 5 });
+  const writes = await fakeWrites(page);
+  await open(page, "medium", habits);
+  const button = page.getByRole("button", { name: "Meditate, today" });
+  await expect(button).toHaveText("15");
+  await button.click();
+  await expect(page.getByRole("dialog").getByRole("spinbutton")).toHaveValue("15");
+  await page.getByRole("dialog").getByRole("spinbutton").fill("20");
+  await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  await expect(button).toHaveText("20");
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0].body.checks.filter((check) => check.date === today)).toEqual([
+    { date: today, value: 20, note: "Morning" },
+  ]);
+});
+
+test("a page that stays open moves to the next day at midnight", async ({ page }) => {
+  const habits = testHabits();
+  habits["read.json"].checks.push({ date: today });
+  await page.clock.install({ time: new Date(`${today}T23:59:30`) });
+  await fakeHabits(page, habits);
+  await page.goto("/?size=medium");
+  await expect(page.locator(".widget")).toHaveAttribute("data-ready", "true");
+  await expect(page.locator('[data-role="summary"]')).toHaveText("1 of 3 done today");
+  await page.clock.runFor(61_000);
+  await expect(page.locator('[data-role="summary"]')).toHaveText("0 of 3 done today");
+});
+
 test("the card shows the last days of each habit", async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 400 });
   await open(page, "medium");

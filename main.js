@@ -5,18 +5,14 @@
 // habits.js computes the numbers of a habit. This file reads and writes the files, and draws.
 import {
   bestStreaks,
-  checkOn,
   checksOf,
-  coveredDays,
   currentStreak,
   dateOf,
   dayOf,
-  doneDays,
   frequencyText,
+  habitFacts,
   isNumberHabit,
   localToday,
-  strength,
-  totals,
 } from "./habits.js";
 
 const sizes = ["small", "medium", "large", "full"];
@@ -39,8 +35,8 @@ const dialog = root.querySelector('[data-role="value-dialog"]');
 let entries = [];
 /** The file of the habit that full screen shows. */
 let selected = null;
-/** The number of writes on their way. A read of the folder waits until none is left. */
-let writing = 0;
+/** The date that the screen shows as today, so the widget draws again after midnight. */
+let shownToday = "";
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" });
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
@@ -57,8 +53,12 @@ async function readJson(path) {
   }
 }
 
-function todayNumber() {
-  return dayOf(localToday());
+function habitPath(file) {
+  return `data/habits/${encodeURIComponent(file)}`;
+}
+
+function isHabit(value) {
+  return typeof value === "object" && value !== null && typeof value.name === "string";
 }
 
 async function loadHabits() {
@@ -67,16 +67,30 @@ async function loadHabits() {
   const files = names
     .filter((name) => typeof name === "string" && habitFile.test(name) && name !== "index.json")
     .sort();
-  const habits = await Promise.all(
-    files.map(async (file) => ({ file, habit: await readJson(`data/habits/${encodeURIComponent(file)}`) })),
-  );
+  const habits = await Promise.all(files.map(async (file) => ({ file, habit: await readJson(habitPath(file)) })));
   // Another widget or the person can write a file with fewer fields: show what can be shown.
-  return habits.filter(({ habit }) => typeof habit === "object" && habit !== null && typeof habit.name === "string");
+  return habits.filter(({ habit }) => isHabit(habit));
 }
 
-function isDoneOn(habit, day) {
-  return doneDays(habit).has(day);
+function entryOf(file) {
+  return entries.find((entry) => entry.file === file);
 }
+
+function todayNumber() {
+  return dayOf(localToday());
+}
+
+/** The numbers of a habit, once for each version of the habit and each day. */
+const factsCache = new WeakMap();
+function facts(habit, today) {
+  const cached = factsCache.get(habit);
+  if (cached?.today === today) return cached.facts;
+  const computed = habitFacts(habit, today);
+  factsCache.set(habit, { today, facts: computed });
+  return computed;
+}
+
+// --- Drawing --------------------------------------------------------------------------------------
 
 /** An element with a class and, as needed, a text. */
 function element(tag, className, text) {
@@ -120,13 +134,15 @@ function tick() {
   return mark;
 }
 
+function amount(habit, value) {
+  return `${numberFormat.format(value)} ${String(habit.unit ?? "")}`.trim();
+}
+
 /** The text of a day for a habit: its date, and whether it is done, with the value. */
 function dayTitle(habit, day, value, covered) {
   const date = dateFormat.format(new Date(dateOf(day)));
   if (value === undefined) return covered ? `${date}: on track` : `${date}: not done`;
-  return isNumberHabit(habit)
-    ? `${date}: ${numberFormat.format(value)} ${String(habit.unit ?? "")}`.trim()
-    : `${date}: done`;
+  return isNumberHabit(habit) ? `${date}: ${amount(habit, value)}` : `${date}: done`;
 }
 
 /** The mark of one day in the row of a habit: a tick, a value, or a dot. */
@@ -138,26 +154,25 @@ function fillMark(node, habit, value) {
 }
 
 function habitRow(entry, today) {
-  const { habit } = entry;
-  const done = doneDays(habit);
-  const covered = coveredDays(habit, today);
+  const { file, habit } = entry;
+  const { done, covered, strength } = facts(habit, today);
   const item = element("li", "habit");
-  item.dataset.file = entry.file;
+  item.dataset.file = file;
 
   const isFull = root.dataset.size === "full";
   const head = element(isFull ? "button" : "div", "habit-head");
   if (isFull) {
     head.type = "button";
-    head.setAttribute("aria-current", String(entry.file === selected));
+    head.setAttribute("aria-current", String(file === selected));
+    head.setAttribute("aria-label", habit.name);
     head.addEventListener("click", () => {
-      selected = entry.file;
+      selected = file;
       render();
     });
   }
   const label = element("span", "habit-label");
   label.append(element("span", "habit-name", habit.name), element("span", "habit-frequency", frequencyText(habit)));
-  head.append(strengthRing(strength(habit, today)), label);
-  if (isFull) head.setAttribute("aria-label", habit.name);
+  head.append(strengthRing(strength), label);
 
   const days = element("ol", "habit-days");
   days.setAttribute("aria-hidden", "true");
@@ -180,15 +195,16 @@ function habitRow(entry, today) {
   check.setAttribute("aria-label", `${habit.name}, today`);
   check.title = dayTitle(habit, today, todayValue, covered.has(today));
   fillMark(check, habit, todayValue);
-  check.addEventListener("click", () => void (isNumberHabit(habit) ? askValue(entry) : toggle(entry)));
+  check.addEventListener("click", () => (isNumberHabit(habit) ? askValue(file) : toggle(file)));
 
   item.append(head, days, check);
   return item;
 }
 
 function render() {
-  const today = todayNumber();
-  const done = entries.filter(({ habit }) => isDoneOn(habit, today)).length;
+  shownToday = localToday();
+  const today = dayOf(shownToday);
+  const done = entries.filter(({ habit }) => facts(habit, today).done.has(today)).length;
   summaryElement.textContent =
     entries.length === 0 ? "No habits yet." : `${String(done)} of ${String(entries.length)} done today`;
   if (entries.length === 0) {
@@ -207,22 +223,23 @@ function render() {
 // --- Full screen: the details of one habit -------------------------------------------------------
 
 function renderDetail(today) {
-  const entry = entries.find(({ file }) => file === selected) ?? entries[0];
+  const entry = entryOf(selected) ?? entries[0];
   detailElement.hidden = root.dataset.size !== "full" || entry === undefined;
   if (detailElement.hidden) return;
   selected = entry.file;
   const { habit } = entry;
+  const numbers = facts(habit, today);
   const header = element("header", "detail-header");
   const label = element("div", "detail-label");
   label.append(element("h2", "detail-name", habit.name), element("p", "detail-frequency", frequencyText(habit)));
-  header.append(strengthRing(strength(habit, today), "strength-ring detail-ring"), label);
+  header.append(strengthRing(numbers.strength, "strength-ring detail-ring"), label);
   detailElement.replaceChildren(
     header,
-    stats(habit, today),
+    stats(habit, numbers, today),
     element("h3", "detail-heading", "History"),
-    calendar(habit, today),
+    calendar(habit, numbers, today),
     element("h3", "detail-heading", "Best streaks"),
-    streakList(habit, today),
+    streakList(numbers),
   );
 }
 
@@ -230,16 +247,13 @@ function days(count) {
   return count === 1 ? "1 day" : `${String(count)} days`;
 }
 
-function stats(habit, today) {
-  const best = bestStreaks(habit, today, 1)[0]?.length ?? 0;
-  const { days: doneCount, sum } = totals(habit);
-  const total = isNumberHabit(habit)
-    ? `${numberFormat.format(sum)} ${String(habit.unit ?? "")}`.trim()
-    : days(doneCount);
+function stats(habit, numbers, today) {
+  const best = bestStreaks(numbers, 1)[0]?.length ?? 0;
+  const total = isNumberHabit(habit) ? amount(habit, numbers.total.sum) : days(numbers.total.days);
   const list = element("dl", "stats");
   const rows = [
-    ["strength", "Strength", `${String(Math.round(strength(habit, today) * 100))}%`],
-    ["current", "Current streak", days(currentStreak(habit, today))],
+    ["strength", "Strength", `${String(Math.round(numbers.strength * 100))}%`],
+    ["current", "Current streak", days(currentStreak(numbers, today))],
     ["best", "Best streak", days(best)],
     ["total", "Total", total],
   ];
@@ -256,9 +270,7 @@ function stats(habit, today) {
  * The history: one column for each week, Monday first, and the newest week on the right. The
  * calendar shows as many weeks as fit its width, up to a year.
  */
-function calendar(habit, today) {
-  const done = doneDays(habit);
-  const covered = coveredDays(habit, today);
+function calendar(habit, { done, covered }, today) {
   const box = element("div", "calendar");
   const width = detailElement.clientWidth || root.clientWidth;
   const weeks = Math.max(8, Math.min(53, Math.floor(width / 22)));
@@ -289,8 +301,8 @@ function calendar(habit, today) {
   return box;
 }
 
-function streakList(habit, today) {
-  const best = bestStreaks(habit, today, 5);
+function streakList(numbers) {
+  const best = bestStreaks(numbers, 5);
   const list = element("ol", "streak-list");
   if (best.length === 0) {
     list.append(element("li", "streak-empty", "No streak yet."));
@@ -311,34 +323,51 @@ function streakList(habit, today) {
 
 // --- Changes ---------------------------------------------------------------------------------------
 
-/** Writes the whole file back with every field that it had, and shows the change at once. */
-async function save(entry, updated) {
-  const before = entry.habit;
-  entry.habit = updated;
+/** The writes, one at a time, so two quick presses reach the file in their order. */
+let queue = Promise.resolve();
+let writing = 0;
+let reloadWanted = false;
+
+/**
+ * Applies `change` to a habit: on the screen at once, then to the newest file on disk. Eva or the
+ * person can change the file between two reads, and the widget must not undo that. The widget
+ * writes the whole file back, with every field that it had.
+ */
+function save(file, change) {
+  const entry = entryOf(file);
+  if (entry === undefined) return;
+  entry.habit = change(entry.habit);
   render();
   writing += 1;
-  try {
-    const response = await fetch(`data/habits/${encodeURIComponent(entry.file)}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: `${JSON.stringify(updated, null, 2)}\n`,
-    });
-    if (response.ok) {
-      noteElement.hidden = true;
-    } else if (response.status === 404 || response.status === 405) {
+  queue = queue.then(async () => {
+    let outcome;
+    let written;
+    try {
+      const fresh = await readJson(habitPath(file));
+      written = change(isHabit(fresh) ? fresh : entry.habit);
+      const response = await fetch(habitPath(file), {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: `${JSON.stringify(written, null, 2)}\n`,
+      });
       // A static server, such as GitHub Pages, has no writes: the change stays on the screen only.
-      showNote(demoNote);
-    } else {
-      // Eva refused the file, such as with 422 when it does not fit the schema.
-      entry.habit = before;
-      showNote(refusedNote);
-      render();
+      outcome = response.ok ? "saved" : response.status === 404 || response.status === 405 ? "demo" : "refused";
+    } catch {
+      outcome = "refused";
     }
-  } catch {
-    showNote(demoNote);
-  } finally {
     writing -= 1;
-  }
+    if (outcome === "saved") {
+      noteElement.hidden = true;
+      const current = entryOf(file);
+      // A later press waits in the queue: its change is on the screen already.
+      if (current !== undefined && writing === 0) current.habit = written;
+    } else {
+      showNote(outcome === "demo" ? demoNote : refusedNote);
+      // Show the file as it is on disk, such as after Eva refused it with 422.
+      if (outcome === "refused") reloadWanted = true;
+    }
+    if (writing === 0 && reloadWanted) await reload();
+  });
 }
 
 function showNote(text) {
@@ -347,40 +376,46 @@ function showNote(text) {
 }
 
 /** Adds or removes today's check of a yes or no habit. */
-function toggle(entry) {
+function toggle(file) {
   const date = localToday();
-  const checks = checksOf(entry.habit);
-  const isDone = isDoneOn(entry.habit, dayOf(date));
-  return save(entry, {
-    ...entry.habit,
-    checks: isDone ? checks.filter((check) => check?.date !== date) : [...checks, { date }],
+  const isDone = facts(entryOf(file).habit, dayOf(date)).done.has(dayOf(date));
+  save(file, (habit) => {
+    const checks = checksOf(habit);
+    return {
+      ...habit,
+      checks: isDone ? checks.filter((check) => check?.date !== date) : [...checks, { date }],
+    };
   });
 }
 
+/**
+ * Today's value of a number habit becomes `value`, in one check. The first check of today keeps
+ * its other fields, such as a note. `null` removes today's checks.
+ */
+function withValue(habit, date, value) {
+  const checks = checksOf(habit);
+  const first = checks.find((check) => check?.date === date);
+  const others = checks.filter((check) => check?.date !== date);
+  if (value === null) return { ...habit, checks: others };
+  return { ...habit, checks: [...others, { ...(first ?? { date }), value }] };
+}
+
 /** Asks for today's value of a number habit, then saves it, removes it, or does nothing. */
-function askValue(entry) {
-  const { habit } = entry;
+function askValue(file) {
+  const { habit } = entryOf(file);
   const date = localToday();
-  const current = checkOn(habit, date);
+  const current = facts(habit, dayOf(date)).done.get(dayOf(date));
   const input = dialog.querySelector('input[name="value"]');
   dialog.querySelector('[data-role="value-title"]').textContent = `${String(habit.name)}, today`;
   dialog.querySelector('[data-role="value-unit"]').textContent = String(habit.unit ?? "");
   dialog.querySelector('[data-role="value-remove"]').hidden = current === undefined;
-  input.value = typeof current?.value === "number" ? String(current.value) : "";
+  input.value = current === undefined ? "" : String(current);
   dialog.returnValue = "cancel";
   dialog.onclose = () => {
-    const checks = checksOf(habit);
     const value = Number(input.value);
-    if (dialog.returnValue === "remove") {
-      void save(entry, { ...habit, checks: checks.filter((check) => check?.date !== date) });
-    } else if (dialog.returnValue === "save" && input.value !== "" && Number.isFinite(value) && value >= 0) {
-      // Keep the other fields of today's check, such as a note.
-      const next =
-        current === undefined
-          ? [...checks, { date, value }]
-          : checks.map((check) => (check === current ? { ...check, value } : check));
-      void save(entry, { ...habit, checks: next });
-    }
+    if (dialog.returnValue === "remove") save(file, (latest) => withValue(latest, date, null));
+    else if (dialog.returnValue === "save" && input.value !== "" && Number.isFinite(value) && value >= 0)
+      save(file, (latest) => withValue(latest, date, value));
   };
   dialog.showModal();
   input.focus();
@@ -389,10 +424,17 @@ function askValue(entry) {
 // --- Start -----------------------------------------------------------------------------------------
 
 async function reload() {
-  if (writing > 0) return;
+  // A write on its way wins: the folder is read again once the last write ends.
+  if (writing > 0) {
+    reloadWanted = true;
+    return;
+  }
+  reloadWanted = false;
   const loaded = await loadHabits();
-  // A write that started during the read wins: its file is newer than what the read got.
-  if (writing > 0) return;
+  if (writing > 0) {
+    reloadWanted = true;
+    return;
+  }
   entries = loaded;
   render();
 }
@@ -412,6 +454,10 @@ async function start() {
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) void reload();
   });
+  // A page that stays open overnight moves to the new day.
+  setInterval(() => {
+    if (localToday() !== shownToday) render();
+  }, 60_000);
   // The calendar shows as many weeks as fit its width.
   let lastWidth = root.clientWidth;
   new ResizeObserver(() => {
