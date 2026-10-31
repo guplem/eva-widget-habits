@@ -38,10 +38,11 @@ let selected = null;
 /** The date that the screen shows as today, so the widget draws again after midnight. */
 let shownToday = "";
 
-const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" });
-const dateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-const monthFormat = new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" });
-const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+// The texts of the widget are English, so its dates and numbers are too.
+const dayFormat = new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "UTC" });
+const dateFormat = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" });
+const monthFormat = new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" });
+const numberFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
 
 /** The JSON at a path, or undefined when the path does not answer. */
 async function readJson(path) {
