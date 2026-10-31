@@ -85,6 +85,28 @@ test("a second press removes today's check", async ({ page }) => {
   expect(writes[1].body.checks).toEqual([{ date: "2026-03-04" }]);
 });
 
+test("three habits fit a medium card of Eva with no scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 370, height: 165 });
+  await open(page, "medium");
+  const list = page.locator(".habit-list");
+  expect(await list.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+});
+
+test("the page has no form, because Eva's sandbox blocks a form submit", async ({ page }) => {
+  await open(page, "medium");
+  await expect(page.locator("form")).toHaveCount(0);
+});
+
+test("the Enter key saves the value of a number habit", async ({ page }) => {
+  const writes = await fakeWrites(page);
+  await open(page, "medium");
+  await page.getByRole("button", { name: "Meditate, today" }).click();
+  await page.getByRole("dialog").getByRole("spinbutton").fill("7");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0].body.checks.at(-1)).toEqual({ date: today, value: 7 });
+});
+
 test("a number habit asks for the value, and saves it with its unit", async ({ page }) => {
   const writes = await fakeWrites(page);
   await open(page, "medium");

@@ -422,6 +422,12 @@ async function start() {
   for (const button of dialog.querySelectorAll("[data-close]")) {
     button.addEventListener("click", () => dialog.close(button.dataset.close));
   }
+  dialog.querySelector('input[name="value"]').addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    // Without this, the Enter key also presses the habit's button, which gets the focus back.
+    event.preventDefault();
+    dialog.close("save");
+  });
   // Tests wait for this flag: every part of the widget has its content now.
   root.dataset.ready = "true";
 }

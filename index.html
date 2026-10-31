@@ -22,7 +22,8 @@
       </div>
       <p class="widget-note" data-role="note" hidden></p>
       <dialog class="value-dialog" data-role="value-dialog">
-        <form method="dialog" class="value-form">
+        <!-- No form: Eva's sandbox blocks a form submit. main.js closes the dialog with each button. -->
+        <div class="value-form">
           <label class="value-label">
             <span class="value-title" data-role="value-title"></span>
             <span class="value-row">
@@ -31,12 +32,11 @@
             </span>
           </label>
           <div class="value-actions">
-            <!-- Save comes first, so the Enter key saves. The style puts it last. -->
-            <button type="submit" value="save" class="button-main">Save</button>
-            <button type="button" class="button-plain" data-close="remove" data-role="value-remove">Remove</button>
             <button type="button" class="button-plain" data-close="cancel">Cancel</button>
+            <button type="button" class="button-plain" data-close="remove" data-role="value-remove">Remove</button>
+            <button type="button" class="button-main" data-close="save">Save</button>
           </div>
-        </form>
+        </div>
       </dialog>
     </main>
   </body>

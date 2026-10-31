@@ -35,7 +35,8 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
+  /* The top right corner stays free: Eva puts her full-screen button there. */
+  justify-content: flex-start;
   gap: 4px 12px;
 }
 
@@ -69,7 +70,8 @@ button {
   container-type: inline-size;
   display: grid;
   flex: 1;
-  grid-auto-rows: minmax(3em, 1fr);
+  /* Three habits fit in a medium card of Eva, about 160 pixels high. */
+  grid-auto-rows: minmax(2.3em, 1fr);
   gap: clamp(4px, 1.2vmin, 10px);
   min-height: 0;
   margin: 0;
@@ -184,8 +186,8 @@ button.habit-head[aria-current="true"] .habit-name {
 .habit-check {
   display: grid;
   place-items: center;
-  width: 1.8em;
-  height: 1.8em;
+  width: 1.6em;
+  height: 1.6em;
   border-radius: 50%;
 }
 
@@ -222,8 +224,8 @@ button.habit-head[aria-current="true"] .habit-name {
 
 .habit-check {
   flex: none;
-  width: 2.2em;
-  height: 2.2em;
+  width: 1.9em;
+  height: 1.9em;
   padding: 0;
   border: 2px solid var(--line, #d9dce5);
   background: var(--chip, #eef0f5);
@@ -513,10 +515,6 @@ button.habit-head[aria-current="true"] .habit-name {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.value-actions .button-main {
-  order: 1;
 }
 
 .button-plain,
