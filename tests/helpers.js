@@ -26,17 +26,24 @@ export async function fakeWrites(page) {
   return writes;
 }
 
-/** Answers eva/location.json as Eva does, with this point, or with null for "no location yet". */
-export async function fakeEvaLocation(page, point) {
-  await page.route("**/eva/location.json", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(point) }),
+/**
+ * Answers the habits folder with these files, by file name, instead of the mock files. Change
+ * the object later to change what the next read gets.
+ */
+export async function fakeHabits(page, files) {
+  await page.route(
+    (url) => url.pathname.startsWith("/data/habits/"),
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const name = decodeURIComponent(new URL(route.request().url()).pathname.slice("/data/habits/".length));
+      const body = name === "index.json" ? Object.keys(files) : files[name];
+      if (body === undefined) return route.fulfill({ status: 404 });
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+    },
   );
 }
 
-/** Today in the browser's time zone, as the widget writes it. */
-export function today() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${String(now.getFullYear())}-${month}-${day}`;
+/** Fixes the clock of the page at noon of this local date, such as "2026-03-10". */
+export async function fixToday(page, date) {
+  await page.clock.setFixedTime(new Date(`${date}T12:00:00`));
 }

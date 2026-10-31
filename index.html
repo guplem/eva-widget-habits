@@ -15,11 +15,29 @@
         <h1 class="widget-title">Habits</h1>
         <p class="widget-summary" data-role="summary"></p>
       </header>
-      <ul class="habit-list" data-role="habits"></ul>
-      <footer class="widget-footer">
-        <p class="widget-location" data-role="location"></p>
-        <p class="widget-note" data-role="note" hidden></p>
-      </footer>
+      <div class="today" data-role="today" aria-hidden="true"></div>
+      <div class="widget-body">
+        <ul class="habit-list" data-role="habits"></ul>
+        <section class="habit-detail" data-role="detail" hidden></section>
+      </div>
+      <p class="widget-note" data-role="note" hidden></p>
+      <dialog class="value-dialog" data-role="value-dialog">
+        <!-- No form: Eva's sandbox blocks a form submit. main.js closes the dialog with each button. -->
+        <div class="value-form">
+          <label class="value-label">
+            <span class="value-title" data-role="value-title"></span>
+            <span class="value-row">
+              <input name="value" type="number" min="0" step="any" inputmode="decimal" />
+              <span class="value-unit" data-role="value-unit"></span>
+            </span>
+          </label>
+          <div class="value-actions">
+            <button type="button" class="button-plain" data-close="cancel">Cancel</button>
+            <button type="button" class="button-plain" data-close="remove" data-role="value-remove">Remove</button>
+            <button type="button" class="button-main" data-close="save">Save</button>
+          </div>
+        </div>
+      </dialog>
     </main>
   </body>
 </html>

@@ -8,16 +8,22 @@ This repository is a widget for Eva's home page: a small web page that Eva shows
 - **Plain, standard web code.** HTML, JavaScript and CSS, with no framework and no build step. A browser loads the files as they are.
 - **The widget talks to its host only through `fetch` to relative paths** of the contract: `config.json`, `data/<input>/`, `eva/location.json` and `eva/theme.css`.
 - **The widget works outside Eva,** on GitHub Pages and with `npm start`, with the mock files at the same paths.
+- **Our own code, under MIT.** The widget follows the features and the look of the Android app Loop Habit Tracker. Never copy its code, its icons, its texts or its name: they are GPL-3.0.
+- **Eva ships this widget as a base widget.** A new permission makes each person approve the update. Add an input, a write or a host only with the owner.
 
 ## Rules
 
 - Never use an inline script or an inline style. Eva's Content Security Policy blocks them.
 - Never rely on `localStorage`.
+- Never rely on a form submit, also `<form method="dialog">`: Eva's sandbox blocks it. Handle each button with a `click` listener.
 - When the widget changes a data file, keep the fields that it does not know.
 - Each input that the widget writes has a JSON Schema in `schemas/`. Its field names follow the naming rules of the contract.
 - A pull request that adds or widens a permission of `eva-widget.json` says so in its body: a new input, a write access, the location, or a host.
-- Keep the mock files in line with the code: `config.json`, `data/`, `eva/theme.css` and `example/location.json`.
+- Keep the mock files in line with the code: `config.json`, `data/` and `eva/theme.css`.
 - Keep `tests/fills-screen.spec.js`: the widget fills the space that it gets, at every size.
+- Keep the numbers of a habit in `habits.js`, with no page code, so `tests/habits.test.js` runs them in Node.
+- The mock habits of `data/habits/` have checks until the end of 2028, so the demo shows a history. Add later checks before then.
+- Fix the clock with `fixToday` of `tests/helpers.js` in each test that depends on today.
 
 ## Checks
 
