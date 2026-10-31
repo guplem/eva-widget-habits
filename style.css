@@ -1,0 +1,539 @@
+/*
+ * The widget fills the whole space that it gets, at every size, with no empty border. Each colour
+ * has a fallback, so the widget works without eva/theme.css too.
+ */
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg, #f5f6fa);
+  color: var(--ink, #1f2430);
+  font-family: system-ui, sans-serif;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.widget {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 2vmin, 16px);
+  width: 100vw;
+  height: 100vh;
+  padding: clamp(8px, 3vmin, 24px);
+  overflow: hidden;
+  background: var(--panel, #ffffff);
+}
+
+.widget-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.widget-title {
+  margin: 0;
+  font-size: clamp(16px, 5vmin, 32px);
+}
+
+.widget-summary,
+.widget-note {
+  margin: 0;
+  color: var(--muted, #5d6475);
+  font-size: clamp(12px, 3vmin, 18px);
+}
+
+.widget-note {
+  color: var(--warn, #9a6b00);
+}
+
+.widget-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(8px, 2vmin, 20px);
+  min-height: 0;
+}
+
+/* --- The list of habits ------------------------------------------------------------------------ */
+
+.habit-list {
+  container-type: inline-size;
+  display: grid;
+  flex: 1;
+  grid-auto-rows: minmax(3em, 1fr);
+  gap: clamp(4px, 1.2vmin, 10px);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.habit,
+.habit-empty {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 2vmin, 14px);
+  min-width: 0;
+  padding: 0 clamp(6px, 2vmin, 14px);
+  border: 1px solid var(--line, #d9dce5);
+  border-radius: 12px;
+  font-size: clamp(14px, 3.6vmin, 22px);
+}
+
+.habit-empty {
+  color: var(--muted, #5d6475);
+}
+
+.habit-head {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: clamp(6px, 1.6vmin, 12px);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+button.habit-head {
+  align-self: stretch;
+  cursor: pointer;
+}
+
+button.habit-head[aria-current="true"] .habit-name {
+  color: var(--accent-ink, #1d4ed8);
+}
+
+.habit-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.habit-name,
+.habit-frequency {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit-name {
+  font-weight: 600;
+}
+
+.habit-frequency {
+  color: var(--muted, #5d6475);
+  font-size: 0.75em;
+}
+
+.strength-ring {
+  flex: none;
+  width: 1.6em;
+  height: 1.6em;
+}
+
+.ring-track,
+.ring-fill {
+  fill: none;
+  stroke-width: 4;
+}
+
+.ring-track {
+  stroke: var(--line, #d9dce5);
+}
+
+.ring-fill {
+  stroke: var(--accent, #3b82f6);
+  stroke-linecap: round;
+}
+
+/* The last days, oldest on the left. Narrow cards keep the newest days only. */
+.habit-days {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.habit-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 2.2em;
+  font-size: 0.8em;
+}
+
+.day-name {
+  color: var(--muted, #5d6475);
+  font-size: 0.7em;
+}
+
+.day-mark,
+.habit-check {
+  display: grid;
+  place-items: center;
+  width: 1.8em;
+  height: 1.8em;
+  border-radius: 50%;
+}
+
+.habit-day.is-covered .day-mark {
+  background: var(--soft, #e0ecff);
+}
+
+.habit-day.is-done .day-mark {
+  color: var(--accent-ink, #1d4ed8);
+}
+
+.dot {
+  width: 0.35em;
+  height: 0.35em;
+  border-radius: 50%;
+  background: var(--muted, #5d6475);
+  opacity: 0.5;
+}
+
+.tick {
+  width: 70%;
+  height: 70%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.value {
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.habit-check {
+  flex: none;
+  width: 2.2em;
+  height: 2.2em;
+  padding: 0;
+  border: 2px solid var(--line, #d9dce5);
+  background: var(--chip, #eef0f5);
+  cursor: pointer;
+}
+
+.habit-check[aria-pressed="true"] {
+  border-color: var(--accent, #3b82f6);
+  background: var(--accent, #3b82f6);
+  color: var(--on-accent, #ffffff);
+}
+
+.habit-check .dot {
+  opacity: 0;
+}
+
+@container (max-width: 560px) {
+  .habit-day:nth-child(-n + 2) {
+    display: none;
+  }
+}
+
+@container (max-width: 440px) {
+  .habit-day:nth-child(-n + 4) {
+    display: none;
+  }
+}
+
+@container (max-width: 320px) {
+  .habit-days {
+    display: none;
+  }
+}
+
+/* --- Small: the count fills the card, with no list ------------------------------------------- */
+
+.today {
+  display: none;
+}
+
+.widget[data-size="small"] .widget-body {
+  display: none;
+}
+
+.widget[data-size="small"] .today {
+  display: grid;
+  flex: 1;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  min-height: 0;
+}
+
+.today-ring,
+.today-count {
+  grid-area: 1 / 1;
+}
+
+.today-ring {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  min-height: 0;
+}
+
+.today-count {
+  font-size: clamp(18px, 13vmin, 72px);
+  font-weight: 700;
+}
+
+.widget[data-size="small"] .widget-header {
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.widget[data-size="small"] .widget-title {
+  font-size: clamp(14px, 8vmin, 32px);
+}
+
+/* --- Full screen: the list and the details of one habit ---------------------------------------- */
+
+.widget[data-size="full"] .widget-body {
+  overflow-y: auto;
+}
+
+.widget[data-size="full"] .habit-list {
+  flex: none;
+  overflow: visible;
+}
+
+.habit-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(8px, 1.6vmin, 14px);
+  min-width: 0;
+  font-size: clamp(14px, 2.4vmin, 18px);
+}
+
+.habit-detail[hidden] {
+  display: none;
+}
+
+@media (min-width: 760px) and (min-aspect-ratio: 1/1) {
+  .widget[data-size="full"] .widget-body {
+    display: grid;
+    grid-template-columns: minmax(280px, 2fr) 3fr;
+    overflow: hidden;
+  }
+
+  .widget[data-size="full"] .habit-list {
+    overflow-y: auto;
+  }
+
+  .widget[data-size="full"] .habit-list,
+  .widget[data-size="full"] .habit-detail {
+    min-height: 0;
+  }
+
+  .widget[data-size="full"] .habit-detail {
+    overflow-y: auto;
+  }
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-ring {
+  width: 3em;
+  height: 3em;
+}
+
+.detail-name {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.detail-frequency {
+  margin: 0;
+  color: var(--muted, #5d6475);
+}
+
+.detail-heading {
+  margin: 0.4em 0 0;
+  color: var(--accent-ink, #1d4ed8);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9em, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.stat {
+  padding: 0.6em 0.8em;
+  border-radius: 10px;
+  background: var(--chip, #eef0f5);
+}
+
+.stat-name {
+  color: var(--muted, #5d6475);
+  font-size: 0.8em;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 1.4em;
+  font-weight: 600;
+}
+
+/* The history: one column for each week, the month above it. */
+.calendar-grid {
+  display: grid;
+  grid-template-rows: 1.2em repeat(7, auto);
+  /* minmax(0, …): a month label never widens its week. */
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 3px;
+}
+
+.calendar-month {
+  overflow: visible;
+  color: var(--muted, #5d6475);
+  font-size: 0.7em;
+  white-space: nowrap;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--chip, #eef0f5);
+}
+
+.calendar-day.is-covered {
+  background: var(--soft, #e0ecff);
+}
+
+.calendar-day.is-done {
+  background: var(--accent, #3b82f6);
+}
+
+.calendar-day.is-future {
+  background: none;
+}
+
+.streak-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.streak {
+  display: grid;
+  grid-template-columns: minmax(7em, auto) 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.streak-range,
+.streak-length,
+.streak-empty {
+  color: var(--muted, #5d6475);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.streak-bar {
+  width: 100%;
+  height: 0.8em;
+  fill: var(--accent, #3b82f6);
+}
+
+/* --- The value of a number habit --------------------------------------------------------------- */
+
+.value-dialog {
+  min-width: min(20em, 90vw);
+  border: 1px solid var(--line, #d9dce5);
+  border-radius: 14px;
+  background: var(--panel, #ffffff);
+  color: var(--ink, #1f2430);
+}
+
+.value-dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.value-form,
+.value-label {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.value-title {
+  font-weight: 600;
+}
+
+.value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.value-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4em 0.6em;
+  border: 1px solid var(--line, #d9dce5);
+  border-radius: 8px;
+  background: var(--bg, #f5f6fa);
+  color: inherit;
+  font: inherit;
+  font-size: 1.2em;
+}
+
+.value-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.value-actions .button-main {
+  order: 1;
+}
+
+.button-plain,
+.button-main {
+  padding: 0.4em 1em;
+  border: 1px solid var(--line, #d9dce5);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+
+.button-main {
+  border-color: var(--accent, #3b82f6);
+  background: var(--accent, #3b82f6);
+  color: var(--on-accent, #ffffff);
+}
+
+.button-plain[hidden] {
+  display: none;
+}

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Habits</title>
+    <!-- Eva answers this path with her colours. The widget works without it too. -->
+    <link rel="stylesheet" href="eva/theme.css" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="main.js"></script>
+  </head>
+  <body>
+    <main class="widget" data-size="medium">
+      <header class="widget-header">
+        <h1 class="widget-title">Habits</h1>
+        <p class="widget-summary" data-role="summary"></p>
+      </header>
+      <div class="today" data-role="today" aria-hidden="true"></div>
+      <div class="widget-body">
+        <ul class="habit-list" data-role="habits"></ul>
+        <section class="habit-detail" data-role="detail" hidden></section>
+      </div>
+      <p class="widget-note" data-role="note" hidden></p>
+      <dialog class="value-dialog" data-role="value-dialog">
+        <form method="dialog" class="value-form">
+          <label class="value-label">
+            <span class="value-title" data-role="value-title"></span>
+            <span class="value-row">
+              <input name="value" type="number" min="0" step="any" inputmode="decimal" />
+              <span class="value-unit" data-role="value-unit"></span>
+            </span>
+          </label>
+          <div class="value-actions">
+            <!-- Save comes first, so the Enter key saves. The style puts it last. -->
+            <button type="submit" value="save" class="button-main">Save</button>
+            <button type="button" class="button-plain" data-close="remove" data-role="value-remove">Remove</button>
+            <button type="button" class="button-plain" data-close="cancel">Cancel</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </body>
+</html>

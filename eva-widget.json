@@ -18,21 +18,13 @@
       "type": "folder",
       "label": "Habits folder",
       "description": "The folder with one file for each habit, such as meditate.json.",
-      "why": "The widget shows your habits, and saves a check when you mark a habit done today.",
+      "why": "The widget shows your habits, their history and their streaks, and saves a check when you mark a habit for today.",
       "required": true,
       "access": "write",
       "schema": "schemas/habits.json",
       "files": "*.json"
-    },
-    {
-      "id": "location",
-      "type": "eva-location",
-      "label": "Location",
-      "description": "Your last location, from your phone.",
-      "why": "The widget shows near which place you check your habits.",
-      "required": false
     }
   ],
   "hosts": [],
-  "prompt": "Habits live in {habits}, one JSON file for each habit. Before you create a habit file, ask the person once."
+  "prompt": "Habits live in {habits}, one JSON file for each habit. When the person says that they did a habit, add a check for that day to its file. Before you create a habit file, ask the person once."
 }
