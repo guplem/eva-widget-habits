@@ -313,20 +313,94 @@ test("a chip of a number habit asks for the value", async ({ page }) => {
   await expect(page.getByRole("dialog")).toContainText("minutes");
 });
 
-// The narrow column of Eva's home page on a computer, and a card at the full width of a phone.
-for (const viewport of [
+// A small card of Eva's home page: the narrow column on a computer (203 and 300 pixels wide), and
+// a card at the full width of a phone (358 pixels wide).
+const smallCards = [
+  { width: 203, height: 170 },
   { width: 300, height: 170 },
   { width: 358, height: 168 },
-]) {
-  for (const count of [3, 4, 5, 6]) {
-    const name = `${String(count)} habits fit a small card of ${String(viewport.width)} x ${String(viewport.height)}`;
-    test(name, async ({ page }) => {
-      await page.setViewportSize(viewport);
-      await open(page, "small", manyHabits(sixNames.slice(0, count), 1));
-      expect(await chipLayout(page)).toEqual({ shown: count, clipped: [], more: 0, moreClipped: false });
+];
+
+for (const viewport of smallCards) {
+  const name = `three habits fill a small card of ${String(viewport.width)} x ${String(viewport.height)}`;
+  test(name, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await open(page, "small", manyHabits(["Meditate", "Read", "Walk"], 1));
+    expect(await chipLayout(page)).toEqual({ shown: 3, clipped: [], more: 0, moreClipped: false });
+    const fill = await page.evaluate(() => {
+      const widget = document.querySelector(".widget");
+      const bottom = widget.getBoundingClientRect().bottom - parseFloat(getComputedStyle(widget).paddingBottom);
+      const chips = [...document.querySelectorAll(".chip")].map((chip) => chip.getBoundingClientRect());
+      return {
+        gap: bottom - Math.max(...chips.map((rect) => rect.bottom)),
+        lowest: Math.min(...chips.map((rect) => rect.height)),
+      };
     });
-  }
+    // The rows of chips share the height of the card: no empty band below them.
+    expect(fill.gap).toBeLessThanOrEqual(4);
+    expect(fill.lowest).toBeGreaterThanOrEqual(40);
+  });
 }
+
+test("four habits fit a small card at the full width of a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 358, height: 168 });
+  await open(page, "small", manyHabits(sixNames.slice(0, 4), 1));
+  expect(await chipLayout(page)).toEqual({ shown: 4, clipped: [], more: 0, moreClipped: false });
+});
+
+/**
+ * The text and the buttons in the top right corner of 56 x 56 pixels, where Eva puts her
+ * full-screen button and her close button.
+ */
+async function cornerItems(page) {
+  return page.evaluate(() => {
+    const corner = { left: window.innerWidth - 56, bottom: 56 };
+    const inCorner = (rect) =>
+      rect.width > 0 && rect.height > 0 && rect.right > corner.left && rect.top < corner.bottom;
+    const found = [];
+    const widget = document.querySelector(".widget");
+    const walker = document.createTreeWalker(widget, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      if (node.textContent.trim() === "") continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      if ([...range.getClientRects()].some(inCorner)) found.push(node.textContent.trim());
+    }
+    for (const control of widget.querySelectorAll("button, input")) {
+      if (inCorner(control.getBoundingClientRect())) found.push(control.getAttribute("aria-label") ?? "button");
+    }
+    return found;
+  });
+}
+
+for (const [size, viewport] of [
+  ["small", { width: 170, height: 168 }],
+  ...smallCards.map((card) => ["small", card]),
+  ["medium", { width: 370, height: 165 }],
+  ["large", { width: 600, height: 400 }],
+  ["full", { width: 390, height: 824 }],
+  ["full", { width: 1280, height: 800 }],
+]) {
+  const name = `the top right corner stays free in size ${size} at ${String(viewport.width)} x ${String(viewport.height)}`;
+  test(name, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await open(page, size);
+    expect(await cornerItems(page)).toEqual([]);
+  });
+}
+
+test("a narrow small card shows the whole count", async ({ page }) => {
+  await page.setViewportSize({ width: 203, height: 170 });
+  await open(page, "small");
+  const summary = page.locator('[data-role="summary"]');
+  await expect(summary).toHaveText("0 of 3 done today");
+  const box = await summary.evaluate((element) => ({
+    right: element.getBoundingClientRect().right,
+    cut: element.scrollWidth > element.clientWidth,
+  }));
+  expect(box.cut).toBe(false);
+  expect(box.right).toBeLessThanOrEqual(203 - 56);
+});
 
 test("a narrow small card shows the chips that fit, and how many more there are", async ({ page }) => {
   await page.setViewportSize({ width: 170, height: 168 });
@@ -334,7 +408,8 @@ test("a narrow small card shows the chips that fit, and how many more there are"
   const layout = await chipLayout(page);
   expect(layout.clipped).toEqual([]);
   expect(layout.moreClipped).toBe(false);
-  expect(layout.shown).toBeGreaterThanOrEqual(2);
+  // Two rows of chips fit under the free corner of Eva's button.
+  expect(layout.shown).toBeGreaterThanOrEqual(1);
   expect(layout.shown + layout.more).toBe(6);
 });
 
