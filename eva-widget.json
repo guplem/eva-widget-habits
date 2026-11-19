@@ -2,7 +2,7 @@
   "contract": 1,
   "name": "Habits",
   "entry": "index.html",
-  "size": "medium",
+  "size": "small",
   "inputs": [
     {
       "id": "title",

@@ -260,9 +260,9 @@ button.habit-head[aria-current="true"] .habit-name {
   }
 }
 
-/* --- Small: the count fills the card, with no list ------------------------------------------- */
+/* --- Small: one chip for each habit, as many as fit ------------------------------------------ */
 
-.today {
+.chip-list {
   display: none;
 }
 
@@ -270,39 +270,86 @@ button.habit-head[aria-current="true"] .habit-name {
   display: none;
 }
 
-.widget[data-size="small"] .today {
-  display: grid;
+.widget[data-size="small"] .chip-list {
+  display: flex;
   flex: 1;
-  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-  place-items: center;
-  min-height: 0;
-}
-
-.today-ring,
-.today-count {
-  grid-area: 1 / 1;
-}
-
-.today-ring {
-  width: auto;
-  height: 100%;
-  max-width: 100%;
-  min-height: 0;
-}
-
-.today-count {
-  font-size: clamp(18px, 13vmin, 72px);
-  font-weight: 700;
-}
-
-.widget[data-size="small"] .widget-header {
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
-  gap: 0;
+  /* Three rows of chips fit a small card of Eva, about 170 pixels high. */
+  gap: 4px 6px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  font-size: clamp(13px, 4vmin, 20px);
 }
 
-.widget[data-size="small"] .widget-title {
-  font-size: clamp(14px, 8vmin, 32px);
+.chip-item {
+  display: flex;
+  max-width: 100%;
+}
+
+.chip-item[hidden],
+.chip-more[hidden] {
+  display: none;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  min-width: 0;
+  max-width: 100%;
+  /* A whole touch target for a finger. */
+  min-height: 40px;
+  padding: 0 0.9em 0 0.65em;
+  border: 0;
+  border-radius: 999px;
+  background: var(--chip, #eef0f5);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: 1.3em;
+  height: 1.3em;
+  border: 2px solid var(--muted, #5d6475);
+  border-radius: 50%;
+}
+
+.chip[aria-pressed="true"] {
+  color: var(--muted, #5d6475);
+}
+
+.chip[aria-pressed="true"] .chip-mark {
+  border-color: var(--ok, #2e8b57);
+  background: var(--ok, #2e8b57);
+  color: var(--panel, #ffffff);
+}
+
+.chip-mark .tick {
+  width: 85%;
+  height: 85%;
+}
+
+.chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-more {
+  padding: 0 0.4em;
+  color: var(--muted, #5d6475);
+  font-size: 0.9em;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* --- Full screen: the list and the details of one habit ---------------------------------------- */
