@@ -247,10 +247,112 @@ test("the card shows the last days of each habit", async ({ page }) => {
   await expect(read.locator(".habit-day").last()).toHaveAttribute("title", /done/);
 });
 
-test("the small size shows the count only", async ({ page }) => {
+/** Yes or no habits with these names, and today's check on the first `done` of them. */
+function manyHabits(names, done = 0) {
+  return Object.fromEntries(
+    names.map((name, index) => [
+      `${name.toLowerCase().replaceAll(" ", "-")}.json`,
+      {
+        name,
+        kind: "yesNo",
+        frequency: { times: 1, days: 1 },
+        checks: index < done ? [{ date: today }] : [],
+      },
+    ]),
+  );
+}
+
+const sixNames = ["Drink water", "Journal", "Meditate", "Read 20 minutes", "Stretch", "Walk"];
+
+/** The chips that show, the "+N more" number, and the chips that leave the widget's content. */
+async function chipLayout(page) {
+  return page.evaluate(() => {
+    const widget = document.querySelector(".widget");
+    const padding = parseFloat(getComputedStyle(widget).paddingBottom);
+    const box = widget.getBoundingClientRect();
+    const isOut = (rect) => rect.bottom > box.bottom - padding + 0.5 || rect.right > box.right - padding + 0.5;
+    const shown = [...document.querySelectorAll(".chip")].filter((chip) => chip.getClientRects().length > 0);
+    const more = document.querySelector('[data-role="more"]');
+    const moreShown = more !== null && more.getClientRects().length > 0;
+    return {
+      shown: shown.length,
+      clipped: shown.filter((chip) => isOut(chip.getBoundingClientRect())).map((chip) => chip.textContent),
+      more: moreShown ? Number(/^\+(\d+) more$/.exec(more.textContent)?.[1]) : 0,
+      moreClipped: moreShown && isOut(more.getBoundingClientRect()),
+    };
+  });
+}
+
+test("the small size shows each habit as a chip, with today's count", async ({ page }) => {
   await open(page, "small");
   await expect(page.locator('[data-role="summary"]')).toHaveText("0 of 3 done today");
   await expect(page.locator(".habit-list")).toBeHidden();
+  await expect(page.locator(".chip-name")).toHaveText(["Meditate", "Read", "Walk"]);
+  await expect(page.getByRole("button", { name: "Read, today" })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("a chip of the small size toggles today's check of its habit", async ({ page }) => {
+  const writes = await fakeWrites(page);
+  await open(page, "small");
+  const chip = page.getByRole("button", { name: "Read, today" });
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  // A done chip shows a tick, not only a colour.
+  await expect(chip.locator(".tick")).toHaveCount(1);
+  await expect(page.locator('[data-role="summary"]')).toHaveText("1 of 3 done today");
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0].body.checks.at(-1)).toEqual({ date: today });
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "false");
+  await expect(chip.locator(".tick")).toHaveCount(0);
+});
+
+test("a chip of a number habit asks for the value", async ({ page }) => {
+  await open(page, "small");
+  await page.getByRole("button", { name: "Meditate, today" }).click();
+  await expect(page.getByRole("dialog")).toContainText("minutes");
+});
+
+// The narrow column of Eva's home page on a computer, and a card at the full width of a phone.
+for (const viewport of [
+  { width: 300, height: 170 },
+  { width: 358, height: 168 },
+]) {
+  for (const count of [3, 4, 5, 6]) {
+    const name = `${String(count)} habits fit a small card of ${String(viewport.width)} x ${String(viewport.height)}`;
+    test(name, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await open(page, "small", manyHabits(sixNames.slice(0, count), 1));
+      expect(await chipLayout(page)).toEqual({ shown: count, clipped: [], more: 0, moreClipped: false });
+    });
+  }
+}
+
+test("a narrow small card shows the chips that fit, and how many more there are", async ({ page }) => {
+  await page.setViewportSize({ width: 170, height: 168 });
+  await open(page, "small", manyHabits(sixNames, 2));
+  const layout = await chipLayout(page);
+  expect(layout.clipped).toEqual([]);
+  expect(layout.moreClipped).toBe(false);
+  expect(layout.shown).toBeGreaterThanOrEqual(2);
+  expect(layout.shown + layout.more).toBe(6);
+});
+
+test("more habits than fit show +N more", async ({ page }) => {
+  const names = [...sixNames, "Floss", "Run", "Sleep early", "No sugar", "Call family", "Practice piano"];
+  await page.setViewportSize({ width: 300, height: 170 });
+  await open(page, "small", manyHabits(names));
+  const layout = await chipLayout(page);
+  expect(layout.clipped).toEqual([]);
+  expect(layout.moreClipped).toBe(false);
+  expect(layout.more).toBeGreaterThan(0);
+  expect(layout.shown + layout.more).toBe(names.length);
+  // A wider card fits more chips.
+  await page.setViewportSize({ width: 600, height: 170 });
+  await expect.poll(async () => (await chipLayout(page)).shown).toBeGreaterThan(layout.shown);
+  const wide = await chipLayout(page);
+  expect(wide.clipped).toEqual([]);
+  expect(wide.shown + wide.more).toBe(names.length);
 });
 
 test("full screen shows the strength, the streaks and the history of the first habit", async ({ page }) => {

@@ -12,7 +12,7 @@ The demo uses mock data. A change in the demo shows on the screen only.
 - **A frequency for each habit,** such as "every day" or "3 times a week". The days between two checks of a weekly habit keep its streak.
 - **The card** shows each habit with its strength ring, its last days and a button for today. A number habit asks for the value.
 - **Full screen** shows the details of one habit: its strength, its current and best streak, its total, a calendar of its history, and its best streaks.
-- **The small card** shows how many habits are done today.
+- **The small card** shows each habit as a chip with a round check mark, and how many are done today. A tap on a chip marks the habit for today. When the chips do not fit, the card says how many more there are: full screen shows them all.
 - The widget reads the folder again each time the page shows. So a check that Eva writes in a chat shows with no reload.
 
 Reminders are not part of the widget: a widget cannot send a notification.

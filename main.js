@@ -27,7 +27,7 @@ const titleElement = root.querySelector(".widget-title");
 const summaryElement = root.querySelector('[data-role="summary"]');
 const listElement = root.querySelector('[data-role="habits"]');
 const detailElement = root.querySelector('[data-role="detail"]');
-const todayElement = root.querySelector('[data-role="today"]');
+const chipList = root.querySelector('[data-role="chips"]');
 const noteElement = root.querySelector('[data-role="note"]');
 const dialog = root.querySelector('[data-role="value-dialog"]');
 
@@ -214,11 +214,64 @@ function render() {
   } else {
     listElement.replaceChildren(...entries.map((entry) => habitRow(entry, today)));
   }
-  // The small card: a ring of the habits done today, with the count inside.
-  const ring = strengthRing(entries.length === 0 ? 0 : done / entries.length, "today-ring");
-  ring.removeAttribute("aria-label");
-  todayElement.replaceChildren(ring, element("span", "today-count", `${String(done)}/${String(entries.length)}`));
+  renderChips(today);
   renderDetail(today);
+}
+
+// --- Small: one chip for each habit --------------------------------------------------------------
+
+function habitChip({ file, habit }, today) {
+  const { done, covered } = facts(habit, today);
+  const todayValue = done.get(today);
+  const chip = element("button", "chip");
+  chip.type = "button";
+  chip.setAttribute("aria-pressed", String(todayValue !== undefined));
+  chip.setAttribute("aria-label", `${habit.name}, today`);
+  chip.title = dayTitle(habit, today, todayValue, covered.has(today));
+  const mark = element("span", "chip-mark");
+  // The tick, not only the colour, says that the habit is done.
+  if (todayValue !== undefined) mark.append(tick());
+  chip.append(mark, element("span", "chip-name", habit.name));
+  chip.addEventListener("click", () => (isNumberHabit(habit) ? askValue(file) : toggle(file)));
+  const item = element("li", "chip-item");
+  item.append(chip);
+  return item;
+}
+
+function renderChips(today) {
+  if (root.dataset.size !== "small") {
+    chipList.replaceChildren();
+    return;
+  }
+  if (entries.length === 0) {
+    chipList.replaceChildren(element("li", "chip-more", "Ask Eva to track a habit."));
+    return;
+  }
+  const more = element("li", "chip-more");
+  more.dataset.role = "more";
+  chipList.replaceChildren(...entries.map((entry) => habitChip(entry, today)), more);
+  fitChips();
+}
+
+/**
+ * Hides the last chips until the rest fit the card with no clipping, and says how many are
+ * hidden. Full screen shows every habit.
+ */
+function fitChips() {
+  const items = [...chipList.querySelectorAll(".chip-item")];
+  const more = chipList.querySelector('[data-role="more"]');
+  if (more === null) return;
+  for (const item of items) item.hidden = false;
+  more.hidden = true;
+  const overflows = () => chipList.scrollHeight > chipList.clientHeight;
+  if (!overflows()) return;
+  more.hidden = false;
+  let shown = items.length;
+  do {
+    shown -= 1;
+    items[shown].hidden = true;
+    more.textContent = `+${String(items.length - shown)} more`;
+  } while (shown > 0 && overflows());
 }
 
 // --- Full screen: the details of one habit -------------------------------------------------------
@@ -461,6 +514,8 @@ async function start() {
   }, 60_000);
   // The calendar shows as many weeks as fit its width.
   let lastWidth = root.clientWidth;
+  // The small card shows as many chips as fit, also after the note shows below them.
+  new ResizeObserver(() => fitChips()).observe(chipList);
   new ResizeObserver(() => {
     if (root.clientWidth === lastWidth) return;
     lastWidth = root.clientWidth;
