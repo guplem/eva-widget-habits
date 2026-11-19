@@ -253,17 +253,28 @@ function renderChips(today) {
   fitChips();
 }
 
+/** The smallest height of a chip, as style.css gives it: a whole touch target for a finger. */
+const chipHeight = 40;
+
 /**
- * Hides the last chips until the rest fit the card with no clipping, and says how many are
- * hidden. Full screen shows every habit.
+ * Spreads the chips over as many rows as the card has room for, so the rows fill its height.
+ * Then hides the last chips until the rest fit with no clipping, and says how many are hidden.
+ * Full screen shows every habit.
  */
 function fitChips() {
   const items = [...chipList.querySelectorAll(".chip-item")];
   const more = chipList.querySelector('[data-role="more"]');
   if (more === null) return;
+  const gap = parseFloat(getComputedStyle(chipList).rowGap) || 0;
+  const rows = Math.max(1, Math.floor((chipList.clientHeight + gap) / (chipHeight + gap)));
+  const overflows = () => chipList.scrollHeight > chipList.clientHeight;
   for (const item of items) item.hidden = false;
   more.hidden = true;
-  const overflows = () => chipList.scrollHeight > chipList.clientHeight;
+  // style.css sets the width of a chip for 1 to 3 chips in a row.
+  chipList.dataset.perRow = String(Math.ceil(items.length / rows));
+  if (!overflows()) return;
+  // Each chip takes its own width, so as many as possible fit, with "+N more" after them.
+  chipList.dataset.perRow = "any";
   if (!overflows()) return;
   more.hidden = false;
   let shown = items.length;

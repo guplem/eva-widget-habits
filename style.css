@@ -20,13 +20,17 @@ button {
 }
 
 .widget {
+  /* The widget contract keeps this top right corner free for Eva's full-screen and close buttons. */
+  --corner: 56px;
+  --padding: clamp(8px, 3vmin, 24px);
+
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: clamp(4px, 2vmin, 16px);
   width: 100vw;
   height: 100vh;
-  padding: clamp(8px, 3vmin, 24px);
+  padding: var(--padding);
   overflow: hidden;
   background: var(--panel, #ffffff);
 }
@@ -34,10 +38,15 @@ button {
 .widget-header {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   align-items: baseline;
-  /* The top right corner stays free: Eva puts her full-screen button there. */
-  justify-content: flex-start;
-  gap: 4px 12px;
+  gap: 2px 12px;
+  /*
+   * The header fills the band of the corner, and stays out of the corner: the content below it
+   * starts under Eva's button. On a narrow card, the count wraps to its own line.
+   */
+  min-height: calc(var(--corner) - var(--padding));
+  padding-right: calc(var(--corner) - var(--padding));
 }
 
 .widget-title {
@@ -70,8 +79,8 @@ button {
   container-type: inline-size;
   display: grid;
   flex: 1;
-  /* Three habits fit in a medium card of Eva, about 160 pixels high. */
-  grid-auto-rows: minmax(2.3em, 1fr);
+  /* Three habits fit in a medium card of Eva, about 160 pixels high, under the band of the corner. */
+  grid-auto-rows: minmax(1.8em, 1fr);
   gap: clamp(4px, 1.2vmin, 10px);
   min-height: 0;
   margin: 0;
@@ -89,7 +98,7 @@ button {
   padding: 0 clamp(6px, 2vmin, 14px);
   border: 1px solid var(--line, #d9dce5);
   border-radius: 12px;
-  font-size: clamp(14px, 3.6vmin, 22px);
+  font-size: clamp(13px, 3.6vmin, 22px);
 }
 
 .habit-empty {
@@ -121,6 +130,7 @@ button.habit-head[aria-current="true"] .habit-name {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  line-height: 1.15;
 }
 
 .habit-name,
@@ -274,21 +284,39 @@ button.habit-head[aria-current="true"] .habit-name {
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  align-content: flex-start;
-  align-items: center;
-  /* Three rows of chips fit a small card of Eva, about 170 pixels high. */
-  gap: 4px 6px;
+  /* The rows of chips share the height of the card, and each chip grows to fill its row. */
+  align-content: stretch;
+  align-items: stretch;
+  gap: 6px;
   min-height: 0;
   margin: 0;
   padding: 0;
   overflow: hidden;
   list-style: none;
-  font-size: clamp(13px, 4vmin, 20px);
+  /* A narrow card gets a smaller text, so two short names share a row. */
+  font-size: clamp(13px, min(9vmin, 7vw), 20px);
 }
 
 .chip-item {
   display: flex;
+  flex: 1 1 auto;
   max-width: 100%;
+}
+
+/*
+ * main.js picks how many chips share a row, so that the rows fill the height of the card. A basis
+ * a bit over 1 / (n + 1) keeps one more chip out of the row, and leaves room for a long name.
+ */
+.chip-list[data-per-row="1"] .chip-item {
+  flex-basis: 100%;
+}
+
+.chip-list[data-per-row="2"] .chip-item {
+  flex-basis: 34%;
+}
+
+.chip-list[data-per-row="3"] .chip-item {
+  flex-basis: 26%;
 }
 
 .chip-item[hidden],
@@ -298,15 +326,17 @@ button.habit-head[aria-current="true"] .habit-name {
 
 .chip {
   display: flex;
+  flex: 1;
   align-items: center;
-  gap: 0.55em;
+  gap: 0.45em;
   min-width: 0;
   max-width: 100%;
-  /* A whole touch target for a finger. */
+  /* A whole touch target for a finger. main.js counts the rows with this height. */
   min-height: 40px;
-  padding: 0 0.9em 0 0.65em;
+  padding: 0 0.7em 0 0.5em;
   border: 0;
-  border-radius: 999px;
+  /* A round end at 40 pixels, and a rounded box when a chip is taller. */
+  border-radius: 20px;
   background: var(--chip, #eef0f5);
   font-weight: 600;
   cursor: pointer;
@@ -345,7 +375,9 @@ button.habit-head[aria-current="true"] .habit-name {
 }
 
 .chip-more {
-  padding: 0 0.4em;
+  flex: none;
+  align-self: center;
+  padding: 0 0.2em;
   color: var(--muted, #5d6475);
   font-size: 0.9em;
   font-weight: 600;
@@ -360,6 +392,8 @@ button.habit-head[aria-current="true"] .habit-name {
 
 .widget[data-size="full"] .habit-list {
   flex: none;
+  /* Full screen has room for taller rows: each check is a whole touch target. */
+  grid-auto-rows: minmax(2.6em, 1fr);
   overflow: visible;
 }
 
