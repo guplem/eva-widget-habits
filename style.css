@@ -293,7 +293,8 @@ button.habit-head[aria-current="true"] .habit-name {
   padding: 0;
   overflow: hidden;
   list-style: none;
-  font-size: clamp(14px, 9vmin, 20px);
+  /* A narrow card gets a smaller text, so two short names share a row. */
+  font-size: clamp(13px, min(9vmin, 7vw), 20px);
 }
 
 .chip-item {
@@ -327,12 +328,12 @@ button.habit-head[aria-current="true"] .habit-name {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 0.55em;
+  gap: 0.45em;
   min-width: 0;
   max-width: 100%;
   /* A whole touch target for a finger. main.js counts the rows with this height. */
   min-height: 40px;
-  padding: 0 0.8em 0 0.6em;
+  padding: 0 0.7em 0 0.5em;
   border: 0;
   /* A round end at 40 pixels, and a rounded box when a chip is taller. */
   border-radius: 20px;
