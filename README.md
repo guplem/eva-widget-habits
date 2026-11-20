@@ -20,7 +20,7 @@ Reminders are not part of the widget: a widget cannot send a notification.
 
 ## The data
 
-You pick a folder of your vault, such as `Life/Habits/`. Each habit is one JSON file in it, such as `meditate.json`. [`schemas/habits.json`](schemas/habits.json) describes the file, and [`data/habits/`](data/habits/) holds the mock files of the demo.
+You pick a folder of your vault. The default is `Life/Health/Habits`: when you turn the widget on, Eva offers **Use the default folder**, or **Create the default folder** when it does not exist yet. You can pick any other folder too. Each habit is one JSON file in it, such as `meditate.json`. [`schemas/habits.json`](schemas/habits.json) describes the file, and [`data/habits/`](data/habits/) holds the mock files of the demo.
 
 ```json
 {
