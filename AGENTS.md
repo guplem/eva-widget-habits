@@ -22,13 +22,15 @@ This repository is a widget for Eva's home page: a small web page that Eva shows
 - Keep the mock files in line with the code: `config.json`, `data/` and `eva/theme.css`.
 - Keep `tests/fills-screen.spec.js`: the widget fills the space that it gets, at every size.
 - Keep the numbers of a habit in `habits.js`, with no page code, so `tests/habits.test.js` runs them in Node.
-- The mock habits of `data/habits/` have checks until the end of 2028, so the demo shows a history. Add later checks before then.
+- The mock habits of `data/habits/` are made up, with checks until the end of 2028, so the demo shows a history. `node scripts/mock-habits.js` writes them: change the script, never the files by hand. Move its last day before 2028 ends.
 - Fix the clock with `fixToday` of `tests/helpers.js` in each test that depends on today.
+- A redraw replaces the buttons. Give each button that can have the focus a `data-focus-key`, so the focus comes back after a redraw.
+- Playwright reuses a server that already runs on port 3100, such as the server of another widget. Stop it, or run the tests with your own copy of `playwright.config.js` on a free port.
 
 ## Checks
 
 - `npm run check` runs every check: the format, the lint, the contract check (`npm run check:widget`) and the tests. CI runs the same checks as the "lint" and "test" jobs.
-- `npm start` runs the widget at http://localhost:3000/. Add `?size=small`, `medium`, `large` or `full` to the address.
+- `npm start` runs the widget at http://localhost:3000/. Add `?size=small`, `medium`, `tall`, `large`, `xlarge` or `full` to the address.
 
 ## Skills
 

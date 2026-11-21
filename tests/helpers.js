@@ -47,3 +47,25 @@ export async function fakeHabits(page, files) {
 export async function fixToday(page, date) {
   await page.clock.setFixedTime(new Date(`${date}T12:00:00`));
 }
+
+/**
+ * Answers `eva/state.json` as Eva does: GET gives the saved object, and PUT replaces it. Returns
+ * the list of the bodies of each PUT.
+ */
+export async function fakeState(page, initial = {}) {
+  const saved = [];
+  let current = initial;
+  await page.route(
+    (url) => url.pathname === "/eva/state.json",
+    async (route) => {
+      const request = route.request();
+      if (request.method() === "PUT") {
+        current = JSON.parse(request.postData() ?? "{}");
+        saved.push(current);
+        return route.fulfill({ status: 204 });
+      }
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(current) });
+    },
+  );
+  return saved;
+}
