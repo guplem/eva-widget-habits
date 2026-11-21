@@ -20,7 +20,9 @@ Reminders are not part of the widget: a widget cannot send a notification.
 
 ## The data
 
-You pick a folder of your vault. The default is `Life/Health/Habits`: when you turn the widget on, Eva offers **Use the default folder**, or **Create the default folder** when it does not exist yet. You can pick any other folder too. Each habit is one JSON file in it, such as `meditate.json`. [`schemas/habits.json`](schemas/habits.json) describes the file, and [`data/habits/`](data/habits/) holds the mock files of the demo.
+You pick a folder of your vault. The default is `Life/Habits`: when you turn the widget on, Eva offers **Use the default folder**, or **Create the default folder** when it does not exist yet. You can pick any other folder too. `Life/Habits` is a folder of Eva's vault map, for habits of any kind: reading, exercise, a behaviour to keep or to stop.
+
+**Did you pick `Life/Health/Habits`, the default of an older version?** The widget keeps the folder that you picked: a new default never moves your data. To use `Life/Habits`, move your habit files there, then remove the widget in **Settings > Personalize > Widgets** and turn it on again with **Use the default folder**. Each habit is one JSON file in it, such as `meditate.json`. [`schemas/habits.json`](schemas/habits.json) describes the file, and [`data/habits/`](data/habits/) holds the mock files of the demo.
 
 ```json
 {
