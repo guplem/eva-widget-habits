@@ -1288,3 +1288,93 @@ button.calendar-day:focus-visible {
 .calendar-day.is-covered {
   background: color-mix(in srgb, var(--habit, var(--accent, #3b82f6)) 20%, var(--panel, #ffffff));
 }
+
+/* --- The menu of a habit -------------------------------------------------------------------------- */
+
+.more-button {
+  display: grid;
+  flex: none;
+  width: 1.9em;
+  height: 1.9em;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted, #5d6475);
+  cursor: pointer;
+}
+
+.more-button:hover,
+.more-button[aria-expanded="true"] {
+  background: var(--chip, #eef0f5);
+  color: var(--ink, #1f2430);
+}
+
+.dots {
+  width: 1.1em;
+  height: 1.1em;
+  fill: currentColor;
+}
+
+.habit .more-button {
+  width: 1.5em;
+  margin-right: -0.3em;
+}
+
+.widget.is-overview .habit .more-button {
+  width: 1.9rem;
+  height: 2.4rem;
+  margin-right: -0.4rem;
+}
+
+.detail-header .more-button {
+  width: 2.4em;
+  height: 2.4em;
+}
+
+.habit-head {
+  -webkit-touch-callout: none;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line, #d9dce5);
+}
+
+/* The day names keep the room of the "more" button at the end of each row. */
+.day-header::after {
+  flex: none;
+  width: 1.5rem;
+  content: "";
+}
+
+/*
+ * The header slot of Eva's home page, beside the greeting on a computer, is one line: the chips
+ * take it, left of Eva's corner. On a phone the slot is a whole card, with the title.
+ */
+@media (max-height: 120px) {
+  .widget[data-slot="header"] .widget-header {
+    display: none;
+  }
+
+  .widget[data-slot="header"] .chip-list {
+    padding-right: calc(var(--corner) - var(--padding));
+  }
+}
+
+/* A short frame keeps the menu compact. */
+@media (max-height: 260px) {
+  .menu {
+    font-size: 14px;
+  }
+
+  .menu-item {
+    min-height: 30px;
+  }
+
+  .menu-title {
+    padding-bottom: 2px;
+  }
+}

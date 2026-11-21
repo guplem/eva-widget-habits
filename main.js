@@ -294,6 +294,9 @@ function habitRow(entry, today) {
   const label = element("span", "habit-label");
   label.append(element("span", "habit-name", habit.name), element("span", "habit-frequency", frequencyText(habit)));
   head.append(strengthRing(numbers.strength), label);
+  // A long press or a right click on the name opens the menu of the habit.
+  onHold(head, (point) => openHabitMenu(file, point, more));
+  const more = moreButton(file, habit);
 
   const days = element("ol", "habit-days");
   days.setAttribute("aria-hidden", "true");
@@ -306,7 +309,7 @@ function habitRow(entry, today) {
     cell.append(element("span", "day-name", dayFormat.format(new Date(dateOf(day)))), mark);
     days.append(cell);
   }
-  item.append(head, days, dayButton(entry, today, today, "habit-check"));
+  item.append(head, days, dayButton(entry, today, today, "habit-check"), more);
   return item;
 }
 
@@ -330,6 +333,8 @@ function overviewRow(entry, today, cells) {
   head.setAttribute("aria-current", String(hasTwoPanes() && file === selected));
   head.setAttribute("aria-label", `${String(habit.name)}, details`);
   head.addEventListener("click", () => openDetail(file));
+  const more = moreButton(file, habit);
+  onHold(head, (point) => openHabitMenu(file, point, more));
   const label = element("span", "habit-label");
   const streak = currentStreak(numbers, today);
   const meta = [frequencyText(habit)];
@@ -343,7 +348,7 @@ function overviewRow(entry, today, cells) {
     cell.append(dayButton(entry, day, today, "day-cell"));
     row.append(cell);
   }
-  item.append(head, row, dayButton(entry, today, today, "habit-check"));
+  item.append(head, row, dayButton(entry, today, today, "habit-check"), more);
   return item;
 }
 
@@ -431,7 +436,7 @@ function habitChip(entry, today) {
   else if (numbers.skipped.has(today)) mark.append(dash());
   chip.append(mark, element("span", "chip-name", habit.name));
   chip.addEventListener("click", () => (isNumberHabit(habit) ? askValue(file, today) : toggle(file, today)));
-  onHold(chip, (point) => openDayMenu(file, today, point, chip));
+  onHold(chip, (point) => openHabitMenu(file, point, chip));
   const item = element("li", `chip-item ${colorClass(habit)}`);
   item.append(chip);
   return item;
@@ -491,6 +496,7 @@ function fitChips() {
 function openDetail(file, focus = "back") {
   selected = file;
   detailOpen = true;
+  if (focus === "settings") settingsDraft = { file, open: true, dirty: false };
   render();
   const target =
     focus === "settings"
@@ -516,7 +522,9 @@ let settingsDraft = null;
 function chooseView(shown) {
   const two = hasTwoPanes();
   const entry = entryOf(selected) ?? shown[0];
-  const visible = isOverview() && entry !== undefined && (two || detailOpen);
+  // The details show beside the overview when there is room. Any size but small shows them in
+  // place of the list once the person opens them.
+  const visible = entry !== undefined && ((isOverview() && two) || (detailOpen && root.dataset.size !== "small"));
   detailElement.hidden = !visible;
   root.dataset.view = !visible ? "list" : two ? "both" : "detail";
   if (!visible) return null;
@@ -567,7 +575,7 @@ function detailHeader(entry, numbers, today, two) {
   label.append(element("p", "detail-frequency", meta.join(" · ")));
   title.append(strengthRing(numbers.strength, "strength-ring detail-ring", true), label);
   const todayButton = dayButton(entry, today, today, "habit-check detail-check");
-  header.append(title, todayButton);
+  header.append(title, todayButton, moreButton(entry.file, habit, "detail"));
   return header;
 }
 
@@ -1022,6 +1030,11 @@ function openMenu(items, anchor, label, returnFocus) {
   menuElement.replaceChildren(
     title,
     ...items.map((item) => {
+      if (item.separator === true) {
+        const line = element("div", "menu-separator");
+        line.setAttribute("role", "separator");
+        return line;
+      }
       const entry = button("menu-item", item.label);
       entry.setAttribute("role", item.checked === undefined ? "menuitem" : "menuitemradio");
       if (item.checked !== undefined) entry.setAttribute("aria-checked", String(item.checked));
@@ -1036,6 +1049,11 @@ function openMenu(items, anchor, label, returnFocus) {
   );
   menuElement.hidden = false;
   placeMenu(anchor);
+  // A short frame needs each line for the entries: the title goes, as the label says the same.
+  if (menuElement.scrollHeight > menuElement.clientHeight) {
+    title.remove();
+    placeMenu(anchor);
+  }
   menuElement.querySelector(".menu-item")?.focus();
 }
 
@@ -1044,6 +1062,7 @@ function closeMenu(restoreFocus = true) {
   menuElement.hidden = true;
   menuElement.replaceChildren();
   const back = menuReturn;
+  if (back instanceof HTMLElement && back.hasAttribute("aria-expanded")) back.setAttribute("aria-expanded", "false");
   menuReturn = null;
   if (restoreFocus && back instanceof HTMLElement && back.isConnected) back.focus();
 }
@@ -1162,6 +1181,164 @@ function openDayMenu(file, day, anchor, returnFocus) {
     action: () => save(file, (habit) => withSkip(withDay(habit, date, null), date, false)),
   });
   openMenu(items, anchor, `${String(entry.habit.name)}, ${dayName(day, today)}`, returnFocus);
+}
+
+// --- The menu of a habit, and Eva's help ---------------------------------------------------------
+
+/** The folder of the habits in the vault, from config.json, such as `Life/Habits`. Empty when unknown. */
+let folderPath = "";
+/** What Eva lets the widget ask, from her answer to `hello`: `chat` and `open`. Empty outside Eva. */
+let evaAsks = new Set();
+let askCount = 0;
+const waitingAsks = new Map();
+
+window.addEventListener("message", (event) => {
+  if (window.parent === window || event.source !== window.parent) return;
+  const answer = event.data;
+  if (typeof answer !== "object" || answer === null || answer.eva !== "widget" || typeof answer.ok !== "boolean")
+    return;
+  const resolve = waitingAsks.get(answer.id);
+  if (resolve === undefined) return;
+  waitingAsks.delete(answer.id);
+  resolve(answer);
+});
+
+/**
+ * Sends an ask to Eva, the parent page, and gives her answer: `{ ok: true }`, or `{ ok: false,
+ * reason }`. With no answer in time, the reason is `no-answer`. Send it right after a tap: Eva
+ * checks that the person tapped.
+ */
+function askEva(message, waitMs) {
+  if (window.parent === window) return Promise.resolve({ ok: false, reason: "no-eva" });
+  askCount += 1;
+  const id = askCount;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      waitingAsks.delete(id);
+      resolve({ ok: false, reason: "no-answer" });
+    }, waitMs);
+    waitingAsks.set(id, (answer) => {
+      clearTimeout(timer);
+      resolve(answer);
+    });
+    window.parent.postMessage({ eva: "widget", id, ...message }, "*");
+  });
+}
+
+/** Asks Eva what she allows. Outside Eva no answer comes, and the entries that need her stay hidden. */
+async function greetEva() {
+  const answer = await askEva({ ask: "hello" }, 400);
+  const asks = answer.ok && Array.isArray(answer.asks) ? answer.asks : [];
+  evaAsks = new Set(asks.filter((type) => type === "chat" || type === "open"));
+}
+
+const refusals = {
+  "no-tap": "Eva needs a tap for this. Try again.",
+  "too-long": "The text is too long for Eva.",
+  "not-found": "Eva could not find this file.",
+};
+
+/** Asks Eva to chat or to open, and says why when she does not. */
+async function askEvaTo(type, payload) {
+  const answer = await askEva({ ask: type, ...payload }, 5000);
+  if (answer.ok) return;
+  if (answer.reason === "not-allowed") {
+    // The person has not approved this ask: the entry hides until the widget loads again.
+    evaAsks.delete(type);
+    showNote("Eva does not allow this yet. Approve it in Settings > Personalize > Widgets.");
+    return;
+  }
+  showNote(refusals[answer.reason] ?? "Eva could not do this. Try again.");
+}
+
+/** The path of a habit's file in the vault, such as `Life/Habits/read.json`. */
+function vaultPath(file) {
+  return folderPath === "" ? file : `${folderPath}/${file}`;
+}
+
+/** A short text for a chat with Eva about a habit: its name, its file and how it goes. */
+function chatText({ file, habit }, numbers, today) {
+  const facts = [frequencyText(habit)];
+  const target = targetText(habit);
+  if (target !== "") facts.push(target.toLowerCase());
+  facts.push(`current streak ${days(currentStreak(numbers, today))}`, `strength ${percent(numbers.strength)}`);
+  if (isArchived(habit)) facts.push("archived");
+  return `Let us talk about my habit "${String(habit.name)}" (${vaultPath(file)}). ${facts.join("; ")}.`.slice(0, 2000);
+}
+
+/** Three dots, drawn here, for the button of a menu. */
+function dots() {
+  const mark = svg("svg", { viewBox: "0 0 24 24", class: "dots", "aria-hidden": "true" });
+  for (const y of [5, 12, 19]) mark.append(svg("circle", { cx: 12, cy: y, r: 2 }));
+  return mark;
+}
+
+/** The button that opens the menu of a habit. */
+function moreButton(file, habit, place = "row") {
+  const node = button("more-button");
+  node.setAttribute("aria-label", `${String(habit.name)}, more`);
+  node.setAttribute("aria-haspopup", "menu");
+  node.setAttribute("aria-expanded", "false");
+  node.dataset.focusKey = `${file}|more|${place}`;
+  node.append(dots());
+  node.addEventListener("click", () => {
+    node.setAttribute("aria-expanded", "true");
+    openHabitMenu(file, node.getBoundingClientRect(), node);
+  });
+  return node;
+}
+
+/**
+ * The menu of a habit: today's check or value, a skip of today, its details and settings, the
+ * archive, and, when Eva allows them, its file in Files and a chat about it.
+ */
+function openHabitMenu(file, anchor, returnFocus) {
+  const entry = entryOf(file);
+  if (entry === undefined) return;
+  const { habit } = entry;
+  const today = todayNumber();
+  const numbers = facts(habit, today);
+  const date = dateOf(today);
+  const isSkipped = numbers.skipped.has(today);
+  const items = [];
+  if (isNumberHabit(habit)) {
+    const label = numbers.checked.has(today) ? "Change today's value…" : "Enter today's value…";
+    items.push({ label, action: () => askValue(file, today) });
+  } else {
+    const label = numbers.done.has(today) ? "Unmark today" : "Mark today done";
+    items.push({ label, action: () => toggle(file, today) });
+  }
+  items.push({
+    label: isSkipped ? "Unskip today" : "Skip today",
+    action: () => save(file, (latest) => withSkip(latest, date, !isSkipped)),
+  });
+  // A small card has no room for the details: Eva's full-screen button shows them.
+  if (root.dataset.size !== "small") {
+    items.push({ label: "See history", action: () => openDetail(file) });
+    items.push({ label: "Edit habit", action: () => openDetail(file, "settings") });
+  }
+  items.push({
+    label: isArchived(habit) ? "Unarchive" : "Archive",
+    action: () => {
+      save(file, (latest) => withArchived(latest, !isArchived(latest)));
+      if (isArchived(entryOf(file)?.habit) && !(isOverview() && state.showArchived)) {
+        showNote(`${String(habit.name)} is archived. Full screen shows it under Archived.`);
+      }
+    },
+  });
+  const help = [];
+  if (evaAsks.has("open") && folderPath !== "") {
+    help.push({ label: "Open in Files", role: "open", action: () => askEvaTo("open", { path: vaultPath(file) }) });
+  }
+  if (evaAsks.has("chat")) {
+    help.push({
+      label: "Start a chat about this habit",
+      role: "chat",
+      action: () => askEvaTo("chat", { text: chatText(entry, numbers, today) }),
+    });
+  }
+  if (help.length > 0) items.push({ separator: true }, ...help);
+  openMenu(items, anchor, String(habit.name), returnFocus);
 }
 
 // --- Changes ---------------------------------------------------------------------------------------
@@ -1316,9 +1493,13 @@ function setUpToolbar() {
 async function start() {
   const size = new URLSearchParams(window.location.search).get("size");
   // Opened alone in a browser, the widget shows its full-screen view.
-  root.dataset.size = sizes.includes(size) ? size : "full";
-  const [config] = await Promise.all([readJson("config.json"), loadState()]);
+  // The header slot of Eva's home page is one wide, short line: the chips of the small card fit it.
+  root.dataset.size = size === "header" ? "small" : sizes.includes(size) ? size : "full";
+  if (size === "header") root.dataset.slot = "header";
+  // Eva's answer to hello comes while the files load: outside Eva, the wait costs nothing more.
+  const [config] = await Promise.all([readJson("config.json"), loadState(), greetEva()]);
   if (typeof config?.title === "string" && config.title.trim() !== "") titleElement.textContent = config.title;
+  if (typeof config?.habits === "string") folderPath = config.habits.trim().replace(/\/+$/, "");
   setUpToolbar();
   entries = await loadHabits();
   render();
