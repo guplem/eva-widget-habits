@@ -561,7 +561,9 @@ button.habit-head[aria-current="true"] .habit-name {
 }
 
 .widget.is-overview .habit-list {
-  grid-auto-rows: minmax(2.9rem, 1fr);
+  /* A row is 4.5rem at most, so a few habits stay together at the top of a tall list. */
+  grid-auto-rows: minmax(2.9rem, 4.5rem);
+  align-content: start;
   font-size: 16px;
 }
 
@@ -1261,7 +1263,7 @@ button.calendar-day:focus-visible {
 }
 
 .widget.is-overview.is-short .habit-list {
-  grid-auto-rows: minmax(2.5rem, 1fr);
+  grid-auto-rows: minmax(2.5rem, 4.5rem);
 }
 
 .widget.is-overview.is-short .habit {
