@@ -313,3 +313,12 @@ test("a file of the old version, with no target, skip, colour or question, still
   await expect(page.locator(".detail-frequency")).toHaveText("Every day");
   await expect(page.locator('[data-stat="current"] .stat-value')).toHaveText("1 day");
 });
+
+test("full screen with few habits keeps each row short, at the top of the list", async ({ page }) => {
+  await open(page, "full", { width: 1280, height: 800 });
+  const rows = await page
+    .locator(".habit")
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  expect(rows.length).toBe(3);
+  for (const height of rows) expect(height).toBeLessThanOrEqual(80);
+});

@@ -219,3 +219,20 @@ test("the details have a more button too", async ({ page }) => {
   await frame.locator(".detail-header").getByRole("button", { name: "Meditate, more" }).click();
   await expect(frame.getByRole("menu", { name: "Meditate" })).toBeVisible();
 });
+
+test("the menu of a small card of Eva's grid (203 x 150) keeps off Eva's corner, and scrolls to its last entry", async ({
+  page,
+}) => {
+  const frame = await openInEva(page, { size: "small", width: 203, height: 150 });
+  const chip = frame.getByRole("button", { name: "Read, today" });
+  await chip.click({ button: "right" });
+  const menu = frame.getByRole("menu");
+  await expect(menu).toBeVisible();
+  const placed = await menu.boundingBox();
+  expect(placed.y).toBeGreaterThanOrEqual(0);
+  expect(placed.y + placed.height).toBeLessThanOrEqual(150 + 0.5);
+  expect(placed.x + placed.width <= 203 - 56 || placed.y >= 56).toBe(true);
+  const last = menu.getByRole("menuitem", { name: "Start a chat about this habit" });
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+});

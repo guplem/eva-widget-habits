@@ -1082,7 +1082,13 @@ function placeMenu(anchor) {
   // Eva's buttons sit in the top right corner: move down out of it, or left of it.
   if (left + width > frame.width - cornerPx && top < cornerPx) {
     if (cornerPx + height <= frame.height - margin) top = cornerPx;
-    else left = Math.max(margin, frame.width - cornerPx - width - margin);
+    else if (frame.width - cornerPx - width - margin >= margin) left = frame.width - cornerPx - width - margin;
+    else {
+      // A card too small for the menu beside the corner, such as a small card of Eva's grid: the
+      // menu goes under the corner, and scrolls.
+      top = cornerPx;
+      menuElement.style.setProperty("max-height", `${String(frame.height - cornerPx - margin)}px`);
+    }
   }
   menuElement.style.setProperty("left", `${String(left)}px`);
   menuElement.style.setProperty("top", `${String(top)}px`);
