@@ -1,5 +1,5 @@
 {
-  "contract": 2,
+  "contract": 3,
   "name": "Habits",
   "entry": "index.html",
   "size": "small",
@@ -27,5 +27,15 @@
     }
   ],
   "hosts": [],
+  "asks": [
+    {
+      "type": "open",
+      "why": "Open in Files, in the menu of a habit, opens the habit's file in Eva's Files page."
+    },
+    {
+      "type": "chat",
+      "why": "Start a chat about this habit, in the menu of a habit, puts a short text about the habit in Eva's message box. Eva never sends it by herself."
+    }
+  ],
   "prompt": "Habits live in {habits}, one JSON file for each habit. When the person says that they did a habit, add a check for that day to its file; a day skipped on purpose goes in skips. Read DATA_FORMAT.md there for the other fields, such as a target or a colour. Before you create a habit file, ask the person once."
 }
