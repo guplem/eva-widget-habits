@@ -224,7 +224,7 @@ test("the menu of a small card of Eva's grid (203 x 150) keeps off Eva's corner,
   page,
 }) => {
   const frame = await openInEva(page, { size: "small", width: 203, height: 150 });
-  const chip = frame.getByRole("button", { name: "Read, today" });
+  const chip = frame.getByRole("button", { name: /, today$/ }).first();
   await chip.click({ button: "right" });
   const menu = frame.getByRole("menu");
   await expect(menu).toBeVisible();
