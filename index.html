@@ -18,10 +18,26 @@
       <!-- The small card: one chip for each habit, as many as fit, then "+N more". -->
       <ul class="chip-list" data-role="chips"></ul>
       <div class="widget-body">
-        <ul class="habit-list" data-role="habits"></ul>
+        <section class="overview" data-role="overview" aria-label="Habits">
+          <!-- Large sizes and full screen: the sort order and the archived habits. -->
+          <div class="toolbar" data-role="toolbar" hidden>
+            <label class="toolbar-field">
+              <span>Sort</span>
+              <select data-role="sort"></select>
+            </label>
+            <label class="toolbar-field toolbar-check">
+              <input type="checkbox" data-role="show-archived" />
+              <span>Archived</span>
+            </label>
+          </div>
+          <div class="day-header" data-role="day-header" aria-hidden="true" hidden></div>
+          <ul class="habit-list" data-role="habits"></ul>
+        </section>
         <section class="habit-detail" data-role="detail" hidden></section>
       </div>
       <p class="widget-note" data-role="note" hidden></p>
+      <!-- The floating menu of a habit or of a day. main.js places it inside the frame. -->
+      <div class="menu" data-role="menu" role="menu" hidden></div>
       <dialog class="value-dialog" data-role="value-dialog">
         <!-- No form: Eva's sandbox blocks a form submit. main.js closes the dialog with each button. -->
         <div class="value-form">

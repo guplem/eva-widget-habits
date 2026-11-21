@@ -1,1 +1,9 @@
-["meditate.json", "read.json", "walk.json"]
+[
+  "coffee.json",
+  "journal.json",
+  "meditate.json",
+  "practise-guitar.json",
+  "read.json",
+  "walk.json",
+  "water-the-plants.json"
+]

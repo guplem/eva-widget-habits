@@ -439,21 +439,21 @@ test("full screen shows the strength, the streaks and the history of the first h
   await expect(detail.locator('[data-stat="best"] .stat-value')).toHaveText("3 days");
   await expect(detail.locator('[data-stat="total"] .stat-value')).toHaveText("37 minutes");
   await expect(detail.locator('[data-stat="strength"] .stat-value')).toHaveText(/^\d+%$/);
-  await expect(detail.locator(".calendar-day.is-done")).toHaveCount(3);
+  await expect(detail.locator("button.calendar-day.is-done")).toHaveCount(3);
   await expect(detail.locator(".streak")).toHaveCount(1);
   await expect(detail.locator(".streak").first()).toContainText("3 days");
 });
 
 test("full screen shows the habit that the person picks", async ({ page }) => {
   await open(page, "full");
-  await page.getByRole("button", { name: "Read", exact: true }).click();
+  await page.getByRole("button", { name: "Read, details" }).click();
   const detail = page.locator('[data-role="detail"]');
   await expect(detail.locator(".detail-name")).toHaveText("Read");
   await expect(detail.locator('[data-stat="best"] .stat-value')).toHaveText("3 days");
   await expect(detail.locator('[data-stat="current"] .stat-value')).toHaveText("1 day");
   await expect(detail.locator('[data-stat="total"] .stat-value')).toHaveText("4 days");
   await expect(detail.locator(".streak")).toHaveCount(2);
-  await expect(page.getByRole("button", { name: "Read", exact: true })).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("button", { name: "Read, details" })).toHaveAttribute("aria-current", "true");
 });
 
 test("the widget reads the folder again when the page shows again", async ({ page }) => {
@@ -478,10 +478,17 @@ test("a broken habit file does not stop the others", async ({ page }) => {
   await expect(page.locator(".habit-name")).toHaveText(["Meditate", "Read", "Walk"]);
 });
 
-test("the mock data of the demo shows on GitHub Pages", async ({ page }) => {
+test("the mock data of the demo shows on GitHub Pages, with no archived habit", async ({ page }) => {
   await page.goto("/?size=medium");
   await expect(page.locator(".widget")).toHaveAttribute("data-ready", "true");
-  await expect(page.locator(".habit-name")).toHaveText(["Meditate", "Read", "Walk"]);
+  await expect(page.locator(".habit-name")).toHaveText([
+    "Coffee",
+    "Meditate",
+    "Practise guitar",
+    "Read",
+    "Walk",
+    "Water the plants",
+  ]);
 });
 
 test("the widget follows the dark mode", async ({ page }) => {
