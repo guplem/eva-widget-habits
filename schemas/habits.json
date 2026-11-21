@@ -6,9 +6,26 @@
   "properties": {
     "name": { "type": "string", "minLength": 1 },
     "kind": { "enum": ["yesNo", "number"] },
+    "question": {
+      "type": "string",
+      "description": "The question that the habit asks each day, such as \"Did you read today?\"."
+    },
     "unit": { "type": "string", "description": "The unit of a number habit, such as minutes." },
+    "target": {
+      "type": "object",
+      "description": "The target of a number habit for one day. With no target, any value above 0 is done.",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "type": {
+          "enum": ["atLeast", "atMost"],
+          "description": "atLeast: the day is done when its value reaches the target (the default). atMost: when its value stays at the target or under it."
+        }
+      }
+    },
     "frequency": {
       "type": "object",
+      "description": "Read as \"times in days\": { \"times\": 3, \"days\": 7 } is three times a week, { \"times\": 1, \"days\": 3 } is every 3 days.",
       "required": ["times", "days"],
       "properties": {
         "times": { "type": "integer", "minimum": 1 },
@@ -17,6 +34,7 @@
     },
     "checks": {
       "type": "array",
+      "description": "One check for each day that the person did the habit. A number habit gives the day's value.",
       "items": {
         "type": "object",
         "required": ["date"],
@@ -26,6 +44,27 @@
           "note": { "type": "string" }
         }
       }
+    },
+    "skips": {
+      "type": "array",
+      "description": "The days that the person skipped on purpose, such as a sick day. A skip keeps the streak and does not lower the strength.",
+      "items": {
+        "type": "object",
+        "required": ["date"],
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "The colour of the habit, as #rrggbb, such as #3b82f6."
+    },
+    "archived": {
+      "type": "boolean",
+      "description": "true for a habit that the person stopped tracking. The widget hides it, and keeps its history."
     },
     "note": { "type": "string" },
     "tags": { "type": "array", "items": { "type": "string" } }
